@@ -1,0 +1,422 @@
+// elements
+const radioViewOptions = document.querySelectorAll("input[name='view-option']");
+const listView = document.getElementById("list-view");
+const boardView = document.getElementById("board-view");
+const addTaskCTA = document.getElementById("add-task-cta");
+const setTaskOverlay = document.getElementById("set-task-overlay");
+const closeButtons = document.querySelectorAll(".close-button");
+const statusSelect = document.getElementById("status-select");
+const statusDropdown = document.getElementById("status-dropdown");
+const taskItems = document.querySelectorAll(".task-item");
+const viewTaskOverlay = document.getElementById("view-task-overlay");
+const deleteTaskCTA = document.getElementById("delete-task-cta");
+const notification = document.getElementById("notification");
+// the current active overlay
+let activeOverlay = null;
+
+//** event listeners **//
+
+// radio buttons for view option
+radioViewOptions.forEach((radioButton) => {
+  radioButton.addEventListener("change", (event) => {
+    const eventTarget = event.target;
+    const viewOption = eventTarget.value;
+
+    switch (viewOption) {
+      case "list":
+        boardView.classList.add("hide");
+        listView.classList.remove("hide");
+        break;
+      case "board":
+        listView.classList.add("hide");
+        boardView.classList.remove("hide");
+        break;
+    }
+  });
+});
+
+// add task
+addTaskCTA.addEventListener("click", () => {
+  setTaskOverlay.classList.remove("hide");
+  activeOverlay = setTaskOverlay;
+  // disable scrolling for content behind the overlay
+  document.body.classList.add("overflow-hidden");
+});
+
+// close buttons inside overlays
+closeButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    activeOverlay.classList.add("hide");
+    activeOverlay = null;
+    // reenable scrolling
+    document.body.classList.remove("overflow-hidden");
+  });
+});
+
+// open status dropdown
+statusSelect.addEventListener("click", () => {
+  statusDropdown.classList.toggle("hide");
+});
+
+// click a task
+taskItems.forEach((task) => {
+  task.addEventListener("click", () => {
+    viewTaskOverlay.classList.remove("hide");
+    activeOverlay = viewTaskOverlay;
+    // disable scrolling for content behind the overlay
+    document.body.classList.add("overflow-hidden");
+  });
+});
+
+// delete a task
+deleteTaskCTA.addEventListener("click", () => {
+  activeOverlay.classList.add("hide");
+  activeOverlay = null;
+  // reenable scrolling
+  document.body.classList.remove("overflow-hidden");
+  // show notification & hide it after a while
+  notification.classList.add("show");
+  setTimeout(() => {
+    notification.classList.remove("show");
+  }, 3000);
+});
+
+// Get current user
+const currentUser = localStorage.getItem('userEmail');
+
+// Task data structure - now user-specific
+function getTasks() {
+  const allTasks = JSON.parse(localStorage.getItem('tasks')) || {};
+  return allTasks[currentUser] || [];
+}
+
+function saveTasks(tasks) {
+  const allTasks = JSON.parse(localStorage.getItem('tasks')) || {};
+  allTasks[currentUser] = tasks;
+  localStorage.setItem('tasks', JSON.stringify(allTasks));
+}
+
+let tasks = getTasks(); // Initialize tasks
+
+  // DOM elements
+  const taskForm = document.querySelector('.form');
+  const nameInput = document.getElementById('name');
+  const descriptionInput = document.getElementById('description');
+  const dueDateDay = document.getElementById('due-date-day');
+  const dueDateMonth = document.getElementById('due-date-month');
+  const dueDateYear = document.getElementById('due-date-year');
+  const statusRadios = document.querySelectorAll('input[name="status-option"]');
+  const taskLists = {
+    todo: document.querySelector('.list-container.pink .tasks-list'),
+    doing: document.querySelector('.list-container.blue .tasks-list'),
+    done: document.querySelector('.list-container.green .tasks-list')
+  };
+  const boardLists = {
+    todo: document.querySelector('.board-view .tasks-list.pink'),
+    doing: document.querySelector('.board-view .tasks-list.blue'),
+    done: document.querySelector('.board-view .tasks-list.green')
+  };
+  
+  // Current task being edited/viewed
+  let currentTask = null;
+  
+  // Initialize the app
+  function init() {
+    renderTasks();
+    setupEventListeners();
+  }
+  
+  // Render all tasks
+  function renderTasks() {
+    // Clear all lists
+    Object.values(taskLists).forEach(list => list.innerHTML = '');
+    Object.values(boardLists).forEach(list => list.innerHTML = '');
+    
+    // Render each task
+    tasks.forEach(task => {
+      const taskElement = createTaskElement(task);
+      
+      // Add to appropriate list view
+      if (task.status === "To do") {
+        taskLists.todo.appendChild(taskElement);
+      } else if (task.status === "Doing") {
+        taskLists.doing.appendChild(taskElement);
+      } else if (task.status === "Done") {
+        taskLists.done.appendChild(taskElement);
+      }
+      
+      // Add to appropriate board view
+      const boardTaskElement = createTaskElement(task, true);
+      if (task.status === "To do") {
+        boardLists.todo.appendChild(boardTaskElement);
+      } else if (task.status === "Doing") {
+        boardLists.doing.appendChild(boardTaskElement);
+      } else if (task.status === "Done") {
+        boardLists.done.appendChild(boardTaskElement);
+      }
+    });
+  }
+  
+  // Create a task element
+  function createTaskElement(task, isBoardView = false) {
+    const li = document.createElement('li');
+    li.className = 'task-item';
+    li.dataset.id = task.id;
+    
+    const button = document.createElement('button');
+    button.className = 'task-button';
+    
+    if (isBoardView) {
+      const div = document.createElement('div');
+      
+      const name = document.createElement('p');
+      name.className = 'task-name';
+      name.textContent = task.name;
+      
+      const dueDate = document.createElement('p');
+      dueDate.className = 'task-due-date';
+      dueDate.textContent = `Due on ${task.dueDate}`;
+      
+      div.appendChild(name);
+      div.appendChild(dueDate);
+      button.appendChild(div);
+    } else {
+      const name = document.createElement('p');
+      name.className = 'task-name';
+      name.textContent = task.name;
+      
+      const dueDate = document.createElement('p');
+      dueDate.className = 'task-due-date';
+      dueDate.textContent = `Due on ${task.dueDate}`;
+      
+      button.appendChild(name);
+      button.appendChild(dueDate);
+    }
+    
+    const arrowIcon = document.createElement('iconify-icon');
+    arrowIcon.setAttribute('icon', 'material-symbols:arrow-back-ios-rounded');
+    arrowIcon.setAttribute('style', 'color: black');
+    arrowIcon.setAttribute('width', '18');
+    arrowIcon.setAttribute('height', '18');
+    arrowIcon.className = 'arrow-icon';
+    
+    button.appendChild(arrowIcon);
+    li.appendChild(button);
+    
+    return li;
+  }
+  
+  // Setup event listeners
+  function setupEventListeners() {
+    // Form submission
+    taskForm.addEventListener('submit', handleFormSubmit);
+    
+    // Task click (view task)
+    document.addEventListener('click', (e) => {
+      const taskItem = e.target.closest('.task-item');
+      if (taskItem) {
+        const taskId = parseInt(taskItem.dataset.id);
+        viewTask(taskId);
+      }
+    });
+    
+    // Edit button
+    document.querySelector('.view-task-overlay .control-buttons-container button:first-child').addEventListener('click', () => {
+      editTask(currentTask.id);
+    });
+
+    // Status selection from dropdown
+  statusDropdown.addEventListener('click', (e) => {
+    const radio = e.target.closest('input[type="radio"]');
+    if (radio) {
+      // Update the displayed status
+      statusSelect.querySelector('span').textContent = radio.value;
+      // Close the dropdown
+      statusDropdown.classList.add('hide');
+    }
+  });
+  }
+  
+  // Handle form submission
+  function handleFormSubmit(e) {
+    e.preventDefault();
+    
+    const name = nameInput.value.trim();
+    const description = descriptionInput.value.trim();
+    const day = dueDateDay.value.trim();
+    const month = dueDateMonth.value.trim();
+    const year = dueDateYear.value.trim();
+    let status = "To do";
+    
+    statusRadios.forEach(radio => {
+      if (radio.checked) {
+        status = radio.value;
+      }
+    });
+    
+    if (!name || !day || !month || !year) {
+      alert('Please fill in all fields');
+      return;
+    }
+    
+    const dueDate = `${month} ${day}, ${year}`;
+    
+    if (currentTask) {
+      // Update existing task
+      const taskIndex = tasks.findIndex(t => t.id === currentTask.id);
+      if (taskIndex !== -1) {
+        tasks[taskIndex] = {
+          ...tasks[taskIndex],
+          name,
+          description,
+          dueDate,
+          status
+        };
+      }
+    } else {
+      // Add new task
+      const newTask = {
+        id: Date.now(), // Simple ID generation
+        name,
+        description,
+        dueDate,
+        status
+      };
+      tasks.push(newTask);
+    }
+  
+  saveTasks(tasks); // Save to localStorage
+  renderTasks();
+  closeOverlay();
+  resetForm();
+  showNotification(currentTask ? 'Task updated successfully' : 'Task added successfully');
+  currentTask = null;
+
+  }
+  
+  // View task details
+  function viewTask(id) {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    
+    currentTask = task;
+    
+    const overlay = document.querySelector('.view-task-overlay');
+    overlay.querySelector('.header.no-margin').textContent = task.name;
+    overlay.querySelector('.value:nth-of-type(1)').textContent = task.description;
+    overlay.querySelector('.value:nth-of-type(2)').textContent = task.dueDate;
+    
+    const statusValue = overlay.querySelector('.status-value');
+    statusValue.innerHTML = '';
+    
+    const circle = document.createElement('span');
+    circle.className = 'circle';
+    circle.classList.add(`${getStatusColor(task.status)}-background`);
+    
+    const statusText = document.createElement('span');
+    statusText.textContent = task.status;
+    
+    statusValue.appendChild(circle);
+    statusValue.appendChild(statusText);
+    
+    overlay.classList.remove('hide');
+    activeOverlay = overlay;
+    document.body.classList.add('overflow-hidden');
+  }
+  
+
+  // Update the editTask function in main.js
+function editTask(id) {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    
+    currentTask = task;
+  
+    // Parse due date
+    const dateParts = task.dueDate.split(/[\s,]+/);
+    const month = dateParts[0];
+    const day = dateParts[1];
+    const year = dateParts[2];
+  
+    // Fill form
+    nameInput.value = task.name;
+    descriptionInput.value = task.description;
+    dueDateDay.value = day;
+    dueDateMonth.value = month;
+    dueDateYear.value = year;
+  
+    // Set status radio and update dropdown display
+    statusRadios.forEach(radio => {
+      if (radio.value === task.status) {
+        radio.checked = true;
+        // Update the displayed status in the dropdown
+        statusSelect.querySelector('span').textContent = task.status;
+      } else {
+        radio.checked = false;
+      }
+    });
+  
+    // Update UI
+    document.querySelector('.set-task-overlay .header').textContent = 'Edit task';
+    document.querySelector('.set-task-overlay .cta-button').textContent = 'Update task';
+  
+    // Switch to edit overlay
+    viewTaskOverlay.classList.add('hide');
+    setTaskOverlay.classList.remove('hide');
+    activeOverlay = setTaskOverlay;
+  }
+
+
+  // Delete task
+  deleteTaskCTA.addEventListener('click', () => {
+    if (!currentTask) return;
+    
+    tasks = tasks.filter(t => t.id !== currentTask.id);
+    renderTasks();
+    closeOverlay();
+    showNotification('Task deleted successfully');
+    currentTask = null;
+  });
+  
+  // Helper functions
+  function getStatusColor(status) {
+    switch (status) {
+      case 'To do': return 'pink';
+      case 'Doing': return 'blue';
+      case 'Done': return 'green';
+      default: return 'pink';
+    }
+  }
+  
+  function closeOverlay() {
+    if (activeOverlay) {
+      activeOverlay.classList.add('hide');
+      activeOverlay = null;
+      document.body.classList.remove('overflow-hidden');
+    }
+  }
+  
+  // Add this to your resetForm function
+function resetForm() {
+    taskForm.reset();
+    document.querySelector('.set-task-overlay .header').textContent = 'Add task';
+    document.querySelector('.set-task-overlay .cta-button').textContent = 'Add task';
+    statusDropdown.classList.add('hide');
+    // Reset the displayed status to default
+    statusSelect.querySelector('span').textContent = 'To do';
+    // Reset the radio selection
+    document.getElementById('to-do-radio').checked = true;
+  }
+  
+  function showNotification(message) {
+    notification.querySelector('p').textContent = message;
+    notification.classList.add('show');
+    setTimeout(() => {
+      notification.classList.remove('show');
+    }, 3000);
+  }
+
+  
+  // Initialize the app
+  init();
+
